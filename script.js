@@ -92,25 +92,13 @@ function initBeyondHero() {
 
 initBeyondHero();
 
-const tourButton = document.getElementById("startTour");
-if (tourButton) {
-  tourButton.addEventListener("click", async function () {
-    const stops = ["home", "about", "portfolio", "tools", "home"];
-    for (const id of stops) {
-      scrollToTarget(id);
-      await new Promise(function (resolve) {
-        setTimeout(resolve, id === "home" ? 1600 : 1200);
-      });
-    }
-  });
-}
-
 function initPortfolioCarousel() {
   const track = document.getElementById("portfolioTrack");
   if (!track) return;
   const prev = document.querySelector(".portfolio-prev");
   const next = document.querySelector(".portfolio-next");
   const meter = document.querySelector(".portfolio-meter i");
+  const cards = [...track.querySelectorAll(".portfolio-card")];
 
   function cardStep() {
     const card = track.querySelector(".portfolio-card");
@@ -238,3 +226,86 @@ function initPortfolioCards() {
 
 initPortfolioCards();
 
+function initGuestbook() {
+  const openButton = document.getElementById("guestbookOpen");
+  const modal = document.getElementById("guestbookModal");
+  const form = document.getElementById("guestbookForm");
+  const nameInput = document.getElementById("guestName");
+  const messageInput = document.getElementById("guestMessage");
+  const list = document.getElementById("guestbookList");
+  if (!openButton || !modal || !form || !nameInput || !messageInput || !list) return;
+
+  const storageKey = "dh-port-guestbook";
+  const nameKey = "dh-port-guest-name";
+
+  function getEntries() {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) || "[]");
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function saveEntries(entries) {
+    localStorage.setItem(storageKey, JSON.stringify(entries.slice(0, 20)));
+  }
+
+  function escapeText(value) {
+    return value.replace(/[&<>"]/g, function (char) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[char];
+    });
+  }
+
+  function renderEntries() {
+    const entries = getEntries();
+    if (entries.length === 0) {
+      list.innerHTML = '<p class="guestbook-empty">아직 남겨진 댓글이 없습니다.</p>';
+      return;
+    }
+    list.innerHTML = entries.map(function (entry) {
+      return '<article class="guestbook-item"><strong>' + escapeText(entry.name) + '</strong><time>' + escapeText(entry.date) + '</time><p>' + escapeText(entry.message) + '</p></article>';
+    }).join("");
+  }
+
+  function openGuestbook() {
+    modal.classList.add("is-open");
+    modal.setAttribute("aria-hidden", "false");
+    nameInput.value = localStorage.getItem(nameKey) || nameInput.value;
+    renderEntries();
+    setTimeout(function () {
+      (nameInput.value ? messageInput : nameInput).focus();
+    }, 30);
+  }
+
+  function closeGuestbook() {
+    modal.classList.remove("is-open");
+    modal.setAttribute("aria-hidden", "true");
+    openButton.focus();
+  }
+
+  openButton.addEventListener("click", openGuestbook);
+  modal.querySelectorAll("[data-guestbook-close]").forEach(function (button) {
+    button.addEventListener("click", closeGuestbook);
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && modal.classList.contains("is-open")) closeGuestbook();
+  });
+
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    const name = nameInput.value.trim();
+    const message = messageInput.value.trim();
+    if (!name || !message) return;
+    localStorage.setItem(nameKey, name);
+    const date = new Date().toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    const entries = [{ name: name, message: message, date: date }].concat(getEntries());
+    saveEntries(entries);
+    messageInput.value = "";
+    renderEntries();
+    messageInput.focus();
+  });
+
+  renderEntries();
+}
+
+initGuestbook();
